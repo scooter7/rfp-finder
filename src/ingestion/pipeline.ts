@@ -15,6 +15,8 @@ export interface IngestionStats {
   classified: number;
   embedded: number;
   errors: Array<{ externalId: string; message: string }>;
+  /** True if the run exited early due to the time budget */
+  timedOut?: boolean;
 }
 
 export interface IngestionOptions {
@@ -24,6 +26,8 @@ export interface IngestionOptions {
   limit?: number;
   /** If true, skip classification + embedding — useful for backfill tests */
   skipEnrichment?: boolean;
+  /** Wall-clock deadline (ms since epoch). Run exits gracefully before this. */
+  deadlineMs?: number;
 }
 
 /**
@@ -34,8 +38,9 @@ export interface IngestionOptions {
  *   4. Embed new records (text-embedding-3-small)
  *   5. Update source.last_crawled_at
  *
- * Runs enrichment inline per-record. For very large sources, fan out
- * classification/embedding into separate Trigger.dev tasks instead.
+ * Runs enrichment inline per-record. Respects `deadlineMs` so Vercel
+ * Cron routes can exit gracefully before their 300s cap; remaining
+ * records are picked up on the next scheduled run.
  */
 export async function runIngestion(
   adapter: IngestionAdapter,
@@ -60,6 +65,17 @@ export async function runIngestion(
       since: options.since,
       limit: options.limit,
     })) {
+      // Bail out before starting a new record if we're close to the deadline.
+      // Upserts are idempotent and classification/embedding is opportunistic,
+      // so the next run will pick up remaining records.
+      if (options.deadlineMs && Date.now() >= options.deadlineMs) {
+        stats.timedOut = true;
+        console.warn(
+          `[ingest/${adapter.key}] deadline reached; exiting early after ${stats.fetched} records`,
+        );
+        break;
+      }
+
       stats.fetched++;
       try {
         await processRecord(

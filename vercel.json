@@ -1,0 +1,10 @@
+{
+  "crons": [
+    { "path": "/api/cron/ingest-sam-gov",    "schedule": "0 */4 * * *" },
+    { "path": "/api/cron/ingest-grants-gov", "schedule": "30 */6 * * *" },
+    { "path": "/api/cron/ingest-usaspending", "schedule": "0 4 * * 1" },
+    { "path": "/api/cron/run-alerts?frequency=realtime", "schedule": "0 * * * *" },
+    { "path": "/api/cron/run-alerts?frequency=daily",    "schedule": "0 13 * * *" },
+    { "path": "/api/cron/run-alerts?frequency=weekly",   "schedule": "0 13 * * 1" }
+  ]
+}

@@ -11,8 +11,6 @@
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
-    "trigger:dev": "npx trigger.dev@latest dev",
-    "trigger:deploy": "npx trigger.dev@latest deploy",
     "seed:sources": "tsx scripts/seed-sources.ts",
     "audit:robots": "tsx scripts/robots-audit.ts"
   },
@@ -21,7 +19,6 @@
     "@ai-sdk/openai": "^1.0.0",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.45.0",
-    "@trigger.dev/sdk": "^3.3.0",
     "ai": "^4.0.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",

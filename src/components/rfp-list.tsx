@@ -20,7 +20,7 @@ export function RfpList({ rfps }: { rfps: Rfp[] }) {
       <div className="rounded-lg border border-dashed border-border p-12 text-center text-muted-foreground">
         <p className="text-sm">No RFPs match the current filters.</p>
         <p className="text-xs mt-2">
-          If this is a fresh install, run the SAM.gov backfill from Trigger.dev.
+          If this is a fresh install, run the SAM.gov cron manually from /api/cron/ingest-sam-gov.
         </p>
       </div>
     );

@@ -16,6 +16,8 @@ export interface AwardIngestionStats {
   updated: number;
   embedded: number;
   errors: Array<{ externalId: string; message: string }>;
+  /** True if the run exited early due to the time budget */
+  timedOut?: boolean;
 }
 
 export interface AwardIngestionOptions {
@@ -24,6 +26,8 @@ export interface AwardIngestionOptions {
   minValueCents?: number;
   /** If true, skip embedding — useful for fast backfills */
   skipEmbedding?: boolean;
+  /** Wall-clock deadline (ms since epoch). Run exits gracefully before this. */
+  deadlineMs?: number;
 }
 
 /**
@@ -57,6 +61,14 @@ export async function runAwardIngestion(
       limit: options.limit,
       minValueCents: options.minValueCents,
     })) {
+      if (options.deadlineMs && Date.now() >= options.deadlineMs) {
+        stats.timedOut = true;
+        console.warn(
+          `[awards/${adapter.key}] deadline reached; exiting early after ${stats.fetched} records`,
+        );
+        break;
+      }
+
       stats.fetched++;
 
       // Skip records with no usable identity
