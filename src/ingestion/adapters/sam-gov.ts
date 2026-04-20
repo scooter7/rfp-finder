@@ -26,7 +26,7 @@ import type {
  *      are excluded — they're rarely useful for vendor lead-gen.)
  */
 
-const BASE_URL = "https://api.sam.gov/opportunities/v2/search";
+const BASE_URL = "https://api.sam.gov/prod/opportunities/v2/search";
 const NOTICE_TYPES = ["o", "p", "k", "r"].join(",");
 const PAGE_SIZE = 1000;
 
