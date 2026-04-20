@@ -12,11 +12,13 @@ A multi-source RFP intelligence platform covering higher-ed, healthcare, K-12, a
 
 - **Federal contracts** via SAM.gov Opportunities API — every 4 hours
 - **Federal grants** via Grants.gov search2 API — every 6 hours (covers NIH/NSF/DOE/ED/HHS to universities, hospitals, districts)
+- **Historical awards** via USAspending.gov search API — weekly pull of contracts + grants for the competitor-intel layer
 - **LLM classification** of every RFP (vertical, category, tags, confidence) via Claude Haiku 4.5
 - **Semantic search** — pgvector HNSW index over 1536-dim OpenAI embeddings
+- **"Similar past awards"** on every RFP detail page — given any RFP, instantly surface who won comparable work, when, and for how much
 - **Keyword + filter search** with hybrid ranking via the `search_rfps` RPC
 - **Dedup** — content hash + embedding similarity to catch the same RFP posted on multiple portals
-- **Dashboard** — list + detail views with "similar opportunities" on each RFP page
+- **Dashboard** — list + detail views with similar opportunities + similar awards on each RFP page
 - **Manual backfill** — kick off historical pulls from the Trigger.dev dashboard
 
 ## What's next
@@ -24,8 +26,9 @@ A multi-source RFP intelligence platform covering higher-ed, healthcare, K-12, a
 | Phase | Scope | Estimate |
 |-------|-------|----------|
 | 1.5 | Saved searches + Resend email alerts | 3-5 days |
-| 2A | ✓ Grants.gov adapter (done) | — |
-| 2B | State portals — requires per-portal ToS + scraping-strategy review (see below) | TBD |
+| 2A | ✓ Grants.gov adapter | — |
+| 2B | ✓ USAspending.gov adapter + competitor-intel UI | — |
+| 2C | State portals — per-portal ToS + scraping-strategy review required (see below) | TBD |
 | 3 | Institution-level ingestion — top R1 universities, major health systems | 4-6 weeks |
 | 4 | Multi-tenant SaaS (Stripe billing, tiered plans, team workspaces) | 3-4 weeks |
 

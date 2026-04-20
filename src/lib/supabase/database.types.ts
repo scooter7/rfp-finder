@@ -106,6 +106,52 @@ export type Database = {
       profiles: { Row: { id: string; email: string; display_name: string | null; created_at: string }; Insert: { id: string; email: string; display_name?: string | null }; Update: Partial<{ email: string; display_name: string | null }> };
       saved_searches: { Row: { id: string; user_id: string; name: string; keyword_query: string | null; semantic_query: string | null; semantic_query_embedding: number[] | null; filters: Json; alert_frequency: "realtime" | "daily" | "weekly" | "never"; last_matched_at: string | null; created_at: string; updated_at: string }; Insert: { user_id: string; name: string; keyword_query?: string | null; semantic_query?: string | null; semantic_query_embedding?: number[] | null; filters?: Json; alert_frequency?: "realtime" | "daily" | "weekly" | "never" }; Update: Partial<Database["public"]["Tables"]["saved_searches"]["Insert"]> };
       alerts: { Row: { id: string; user_id: string; rfp_id: string; saved_search_id: string; relevance_score: number | null; sent_at: string | null; clicked_at: string | null; created_at: string }; Insert: { user_id: string; rfp_id: string; saved_search_id: string; relevance_score?: number | null }; Update: Partial<{ sent_at: string | null; clicked_at: string | null }> };
+      awards: {
+        Row: {
+          id: string;
+          source_id: string;
+          external_id: string;
+          award_type: "contract" | "grant" | "loan" | "direct_payment" | "idv" | "other";
+          title: string | null;
+          description: string | null;
+          piid_or_fain: string | null;
+          url: string;
+          recipient_name: string | null;
+          recipient_uei: string | null;
+          recipient_state: string | null;
+          awarding_agency: string | null;
+          awarding_sub_agency: string | null;
+          action_date: string | null;
+          start_date: string | null;
+          end_date: string | null;
+          total_obligated_cents: number | null;
+          base_and_all_options_cents: number | null;
+          naics_code: string | null;
+          psc_code: string | null;
+          place_of_performance_state: string | null;
+          raw_payload: Json;
+          content_hash: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Omit<
+          Database["public"]["Tables"]["awards"]["Row"],
+          "id" | "created_at" | "updated_at" | "raw_payload"
+        > & { id?: string; raw_payload?: Json };
+        Update: Partial<Database["public"]["Tables"]["awards"]["Insert"]>;
+      };
+      award_embeddings: {
+        Row: {
+          award_id: string;
+          embedding: number[];
+          model_version: string;
+          embedded_at: string;
+        };
+        Insert: Omit<Database["public"]["Tables"]["award_embeddings"]["Row"], "embedded_at"> & {
+          embedded_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["award_embeddings"]["Insert"]>;
+      };
     };
     Functions: {
       search_rfps: {
@@ -147,6 +193,43 @@ export type Database = {
           state: string | null;
           posted_at: string | null;
           similarity: number;
+        }[];
+      };
+      find_similar_awards: {
+        Args: {
+          p_rfp_id: string;
+          p_limit?: number;
+          p_min_similarity?: number;
+          p_award_type?: string | null;
+          p_max_age_days?: number | null;
+        };
+        Returns: {
+          award_id: string;
+          title: string | null;
+          description: string | null;
+          award_type: string;
+          recipient_name: string | null;
+          recipient_state: string | null;
+          awarding_agency: string | null;
+          awarding_sub_agency: string | null;
+          action_date: string | null;
+          total_obligated_cents: number | null;
+          naics_code: string | null;
+          url: string;
+          similarity: number;
+        }[];
+      };
+      find_awards_for_recipient: {
+        Args: { p_recipient_pattern: string; p_limit?: number };
+        Returns: {
+          award_id: string;
+          title: string | null;
+          award_type: string;
+          recipient_name: string | null;
+          awarding_agency: string | null;
+          action_date: string | null;
+          total_obligated_cents: number | null;
+          url: string;
         }[];
       };
     };

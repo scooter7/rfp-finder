@@ -29,6 +29,17 @@ const SEED_SOURCES = [
       notes: "Federal financial assistance. No auth. ~1000 posted + ~700 forecasted at any time. Big signal for higher-ed (NIH/NSF/DOE/ED), healthcare (HHS/CDC), K-12 (ED).",
     },
   },
+  {
+    adapter_key: "usaspending_gov",
+    name: "USAspending.gov Federal Awards",
+    type: "federal",
+    state: null,
+    url: "https://www.usaspending.gov/",
+    metadata: {
+      api: "https://api.usaspending.gov/api/v2/search/spending_by_award/",
+      notes: "Historical federal awards (contracts + grants). No auth. Powers the 'similar past awards' competitor-intel view on RFP detail pages.",
+    },
+  },
   // ----- Phase 2B (state portals) -----
   // Every major state portal (CA, TX, NY, FL, IL) either disallows scraping
   // via robots.txt or runs as a client-side SPA requiring Playwright.
