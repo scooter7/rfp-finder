@@ -1,0 +1,23 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+
+.env
+.env.local
+.env.*.local
+!.env.example
+
+*.log
+.DS_Store
+
+.vercel
+.turbo
+
+# Supabase
+supabase/.branches
+supabase/.temp
+
+# Trigger.dev
+.trigger/
