@@ -14,7 +14,12 @@ export async function GET(request: Request) {
   const startedAt = Date.now();
   const deadlineMs = startedAt + 270_000; // leave 30s margin under maxDuration
 
-  const since = new Date(startedAt - 6 * 60 * 60 * 1000); // 6h overlap window
+  // Default 6h overlap window for cron; `?days=N` overrides for manual backfills.
+  const daysParam = new URL(request.url).searchParams.get("days");
+  const lookbackMs = daysParam
+    ? Math.max(1, Math.min(365, Number(daysParam))) * 86_400_000
+    : 6 * 60 * 60 * 1000;
+  const since = new Date(startedAt - lookbackMs);
   const adapter = createAdapter("sam_gov");
 
   try {

@@ -14,7 +14,11 @@ export async function GET(request: Request) {
   const startedAt = Date.now();
   const deadlineMs = startedAt + 270_000;
 
-  const since = new Date(startedAt - 12 * 60 * 60 * 1000); // 12h overlap
+  const daysParam = new URL(request.url).searchParams.get("days");
+  const lookbackMs = daysParam
+    ? Math.max(1, Math.min(365, Number(daysParam))) * 86_400_000
+    : 12 * 60 * 60 * 1000;
+  const since = new Date(startedAt - lookbackMs);
   const adapter = createAdapter("grants_gov");
 
   try {
