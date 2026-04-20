@@ -13,24 +13,99 @@ A multi-source RFP intelligence platform covering higher-ed, healthcare, K-12, a
 - **Federal contracts** via SAM.gov Opportunities API — every 4 hours
 - **Federal grants** via Grants.gov search2 API — every 6 hours (covers NIH/NSF/DOE/ED/HHS to universities, hospitals, districts)
 - **Historical awards** via USAspending.gov search API — weekly pull of contracts + grants for the competitor-intel layer
+- **Institution & state portal adapter** — `HtmlPortalAdapter`, config-driven, uses Haiku for LLM-based list extraction (no fragile CSS selectors)
 - **LLM classification** of every RFP (vertical, category, tags, confidence) via Claude Haiku 4.5
 - **Semantic search** — pgvector HNSW index over 1536-dim OpenAI embeddings
 - **"Similar past awards"** on every RFP detail page — given any RFP, instantly surface who won comparable work, when, and for how much
 - **Keyword + filter search** with hybrid ranking via the `search_rfps` RPC
 - **Dedup** — content hash + embedding similarity to catch the same RFP posted on multiple portals
-- **Dashboard** — list + detail views with similar opportunities + similar awards on each RFP page
-- **Manual backfill** — kick off historical pulls from the Trigger.dev dashboard
+- **Saved searches + email alerts** via Resend — realtime / daily / weekly digests
+- **Supabase magic-link auth** — header shows signed-in state, middleware protects user routes
+- **robots.txt audit tool** (`pnpm audit:robots`) — check before adding any new portal
 
 ## What's next
 
-| Phase | Scope | Estimate |
-|-------|-------|----------|
-| 1.5 | Saved searches + Resend email alerts | 3-5 days |
-| 2A | ✓ Grants.gov adapter | — |
-| 2B | ✓ USAspending.gov adapter + competitor-intel UI | — |
-| 2C | State portals — per-portal ToS + scraping-strategy review required (see below) | TBD |
-| 3 | Institution-level ingestion — top R1 universities, major health systems | 4-6 weeks |
-| 4 | Multi-tenant SaaS (Stripe billing, tiered plans, team workspaces) | 3-4 weeks |
+| Phase | Scope | Status |
+|-------|-------|--------|
+| 1 | Schema, federal ingestion, dashboard | ✓ |
+| 1.5 | Saved searches + Resend email alerts | ✓ |
+| 2A | Grants.gov adapter | ✓ |
+| 2B | USAspending.gov adapter + competitor intel | ✓ |
+| 2C | State portals — audit + pattern ready; concrete states to onboard case-by-case | 🟡 pattern ready |
+| 3 | Institution portals (universities, health systems) — pattern ready; first institutions to onboard | 🟡 pattern ready |
+| 4 | Multi-tenant SaaS (Stripe billing, tiered plans, team workspaces) | — |
+
+### How to onboard a new portal (state or institution)
+
+This is the repeatable workflow. ~30 minutes per portal.
+
+**1. Audit robots.txt:**
+```bash
+pnpm audit:robots https://your-portal.gov/bids
+```
+Check the verdict column. If ❌, don't build — either the owner doesn't want this, or we need commercial licensing.
+
+**2. Add a seed row** in `scripts/seed-sources.ts`:
+```ts
+{
+  adapter_key: "university_of_oregon",
+  name: "University of Oregon Procurement",
+  type: "institution",
+  state: "OR",
+  url: "https://uoregon.bonfirehub.com/portal/",
+  metadata: { platform: "Bonfire" },
+},
+```
+
+Then `pnpm seed:sources` to create the row.
+
+**3. Create a Trigger.dev task** at `trigger/tasks/ingest-university-of-oregon.ts`:
+```ts
+import { schedules, logger } from "@trigger.dev/sdk/v3";
+import { HtmlPortalAdapter } from "@/ingestion/adapters/html-portal";
+import { runIngestion } from "@/ingestion/pipeline";
+
+const adapter = new HtmlPortalAdapter({
+  key: "university_of_oregon",
+  name: "University of Oregon Procurement",
+  sourceType: "institution",
+  state: "OR",
+  defaultAgencyName: "University of Oregon",
+  listingUrl: "https://uoregon.bonfirehub.com/portal/?tab=openOpportunities",
+  extractionHints: "Bonfire-hosted. Opportunities are in cards with a title, posted date, and due date. Ignore the 'Past Opportunities' tab.",
+});
+
+export const ingestUoRegon = schedules.task({
+  id: "ingest-university-of-oregon",
+  cron: "0 5 * * *",
+  run: async () => {
+    const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    const stats = await runIngestion(adapter, { since });
+    logger.info("UO ingestion complete", stats);
+    return stats;
+  },
+});
+```
+
+**4. Deploy and observe the first run.** `HtmlPortalAdapter` uses Haiku to extract; if results are off, tune `extractionHints` and re-run.
+
+### Why LLM-based extraction over CSS selectors
+
+Traditional scrapers use CSS selectors tied to portal markup. That breaks every time the portal redesigns — and state/institution portals redesign every 2–3 years. The fix is always reactive, costs dev time, and fails silently when a selector matches nothing.
+
+`HtmlPortalAdapter` hands the full HTML (cleaned) to Haiku with a Zod schema describing what an opportunity looks like. Haiku adapts to layout changes automatically. A few thousand tokens per portal per run is vastly cheaper than quarterly scraper maintenance across dozens of sources.
+
+### State portal findings from the audit
+
+Ran `pnpm audit:robots` against the Phase 2C candidate set (CA, TX, NY, FL, IL plus alternates OR, WA, GA, VA, PA). Headline findings:
+
+- **Texas ESBD** — `robots.txt` disallows automated access. Not a target.
+- **California Cal eProcure** — client-side SPA; `HtmlPortalAdapter` won't work as-is. Would need Firecrawl or Playwright.
+- **NY State Contract Reporter** — requires registration for content access.
+- **Florida / Illinois** — similar session/auth constraints to NY.
+- **Oregon, Georgia, Virginia** — rescan these first; precedent suggests they're more permissive (Public Bid Tracker scrapes them).
+
+The `HtmlPortalAdapter` pattern is ready. Concrete state adapters become a matter of running the audit and writing a Trigger.dev task per permitted state — no new adapter code required.
 
 ### State portal research notes
 

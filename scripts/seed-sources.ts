@@ -40,6 +40,28 @@ const SEED_SOURCES = [
       notes: "Historical federal awards (contracts + grants). No auth. Powers the 'similar past awards' competitor-intel view on RFP detail pages.",
     },
   },
+  // ----- Phase 3: Institution-level HTML portals -----
+  //
+  // To add an institution:
+  //   1. Run `pnpm audit:robots https://portal.url/` to confirm scraping is permitted
+  //   2. Add a seed entry below with type="institution" and 2-char state
+  //   3. Add a Trigger.dev task at trigger/tasks/ingest-{adapter_key}.ts that
+  //      instantiates HtmlPortalAdapter with the portal's config
+  //   4. Deploy and observe the first run — HTML portals often need
+  //      extraction-hint tuning after seeing real output
+  //
+  // Example (uncomment once robots.txt is confirmed):
+  // {
+  //   adapter_key: "university_of_oregon",
+  //   name: "University of Oregon Procurement",
+  //   type: "institution",
+  //   state: "OR",
+  //   url: "https://uoregon.bonfirehub.com/portal/",
+  //   metadata: {
+  //     platform: "Bonfire",
+  //     notes: "Public bid listing. Bonfire-hosted, consistent structure across tenants.",
+  //   },
+  // },
   // ----- Phase 2B (state portals) -----
   // Every major state portal (CA, TX, NY, FL, IL) either disallows scraping
   // via robots.txt or runs as a client-side SPA requiring Playwright.

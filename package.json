@@ -13,7 +13,8 @@
     "db:reset": "supabase db reset",
     "trigger:dev": "npx trigger.dev@latest dev",
     "trigger:deploy": "npx trigger.dev@latest deploy",
-    "seed:sources": "tsx scripts/seed-sources.ts"
+    "seed:sources": "tsx scripts/seed-sources.ts",
+    "audit:robots": "tsx scripts/robots-audit.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.0",
