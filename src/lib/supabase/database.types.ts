@@ -170,7 +170,7 @@ export type Database = {
           p_query_embedding?: number[] | null;
           p_vertical?: string | null;
           p_category?: string | null;
-          p_state?: string | null;
+          p_states?: string[] | null;
           p_posted_after?: string | null;
           p_due_after?: string | null;
           p_min_value_cents?: number | null;

@@ -9,7 +9,7 @@ const searchSchema = z.object({
   semantic: z.string().optional(),
   vertical: z.string().optional(),
   category: z.string().optional(),
-  state: z.string().length(2).optional(),
+  state: z.union([z.string().length(2), z.array(z.string().length(2))]).optional(),
   postedAfter: z.string().datetime().optional(),
   dueAfter: z.string().datetime().optional(),
   minValueCents: z.number().int().min(0).optional(),
@@ -45,12 +45,18 @@ export async function POST(request: Request) {
     }
   }
 
+  const states = Array.isArray(params.state)
+    ? params.state
+    : params.state
+      ? [params.state]
+      : null;
+
   const { data, error } = await supabase.rpc("search_rfps", {
     p_keyword: params.keyword ?? null,
     p_query_embedding: queryEmbedding,
     p_vertical: params.vertical ?? null,
     p_category: params.category ?? null,
-    p_state: params.state ?? null,
+    p_states: states,
     p_posted_after: params.postedAfter ?? null,
     p_due_after: params.dueAfter ?? null,
     p_min_value_cents: params.minValueCents ?? null,
