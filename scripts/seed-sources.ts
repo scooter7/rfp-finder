@@ -85,7 +85,10 @@ async function main() {
   for (const source of SEED_SOURCES) {
     const { error } = await supabase
       .from("sources")
-      .upsert(source, { onConflict: "adapter_key" });
+      // Cast: our hand-written Database types omit `Relationships`, which
+      // supabase-js needs to infer the Insert param type; it falls back to
+      // `never` for a named variable (inline literals happen to work).
+      .upsert(source as never, { onConflict: "adapter_key" });
 
     if (error) {
       console.error(`❌ ${source.adapter_key}: ${error.message}`);
