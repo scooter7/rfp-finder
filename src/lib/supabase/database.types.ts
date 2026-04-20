@@ -33,12 +33,13 @@ export type Database = {
         };
         Insert: Omit<
           Database["public"]["Tables"]["sources"]["Row"],
-          "id" | "created_at" | "updated_at" | "error_count" | "status" | "metadata"
+          "id" | "created_at" | "updated_at" | "error_count" | "status" | "metadata" | "last_crawled_at"
         > & {
           id?: string;
           error_count?: number;
           status?: "active" | "paused" | "errored";
           metadata?: Json;
+          last_crawled_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["sources"]["Insert"]>;
       };

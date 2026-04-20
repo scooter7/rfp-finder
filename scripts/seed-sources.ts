@@ -5,8 +5,11 @@
  * Idempotent — re-running updates existing rows by adapter_key.
  */
 import { createAdminClient } from "../src/lib/supabase/admin";
+import type { Database } from "../src/lib/supabase/database.types";
 
-const SEED_SOURCES = [
+type SourceInsert = Database["public"]["Tables"]["sources"]["Insert"];
+
+const SEED_SOURCES: SourceInsert[] = [
   {
     adapter_key: "sam_gov",
     name: "SAM.gov Contract Opportunities",
