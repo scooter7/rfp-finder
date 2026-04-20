@@ -26,7 +26,7 @@ import type {
  *      are excluded — they're rarely useful for vendor lead-gen.)
  */
 
-const BASE_URL = "https://api.sam.gov/prod/opportunities/v2/search";
+const BASE_URL = "https://api.sam.gov/opportunities/v2/search";
 const NOTICE_TYPES = ["o", "p", "k", "r"].join(",");
 const PAGE_SIZE = 1000;
 
@@ -128,6 +128,13 @@ export class SamGovAdapter implements IngestionAdapter {
         });
         if (!res.ok) {
           const body = await res.text().catch(() => "");
+          // SAM.gov returns 404 with empty body for unactivated/invalid keys.
+          // Call that out explicitly since it's the #1 cause of this failure.
+          if (res.status === 404 && !body) {
+            throw new Error(
+              "SAM.gov 404 (empty body) — usually means SAM_GOV_API_KEY is invalid or not yet activated (can take up to 24h after registration).",
+            );
+          }
           throw new Error(`SAM.gov ${res.status}: ${body.slice(0, 200)}`);
         }
         return (await res.json()) as SamGovSearchResponse;
