@@ -40,10 +40,14 @@ export async function GET(request: Request) {
   const startedAt = Date.now();
   const deadlineMs = startedAt + 270_000;
 
+  // HTML portals pre-filter to currently-listed (i.e. still-open) RFPs, so
+  // there's no value re-filtering by postedAt — an RFP posted a year ago
+  // that's still listed is still relevant. Default to a 5-year window to
+  // effectively disable the since-filter; `?days=N` can narrow it.
   const daysParam = new URL(request.url).searchParams.get("days");
   const lookbackMs = daysParam
-    ? Math.max(1, Math.min(365, Number(daysParam))) * 86_400_000
-    : 7 * 86_400_000; // 7-day default overlap
+    ? Math.max(1, Math.min(3650, Number(daysParam))) * 86_400_000
+    : 5 * 365 * 86_400_000;
   const since = new Date(startedAt - lookbackMs);
 
   const supabase = createAdminClient();
