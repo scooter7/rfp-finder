@@ -7,6 +7,9 @@
  * Or with custom candidates:
  *   tsx scripts/robots-audit.ts https://example.gov/bids
  *
+ * Or against every state in the survey:
+ *   tsx scripts/robots-audit.ts --all-states
+ *
  * For each candidate, fetches /robots.txt and determines whether our
  * user-agent is permitted to fetch the listing path. Output is a markdown
  * table suitable for pasting into README.md.
@@ -14,6 +17,8 @@
  * This does NOT enforce robots.txt — that's the adapter's job. The audit
  * only tells you which portals are safe to build against.
  */
+
+import { STATE_PORTALS } from "../src/ingestion/state-portals";
 
 interface Candidate {
   name: string;
@@ -118,10 +123,18 @@ function evaluateRobots(
 }
 
 async function main() {
-  const candidates: Candidate[] =
-    process.argv.length > 2
-      ? process.argv.slice(2).map((url) => ({ name: url, url }))
-      : DEFAULT_CANDIDATES;
+  const args = process.argv.slice(2);
+  let candidates: Candidate[];
+  if (args.includes("--all-states")) {
+    candidates = STATE_PORTALS.map((p) => ({
+      name: `${p.state} ${p.stateName}`,
+      url: p.portalUrl,
+    }));
+  } else if (args.length > 0) {
+    candidates = args.map((url) => ({ name: url, url }));
+  } else {
+    candidates = DEFAULT_CANDIDATES;
+  }
 
   console.log(`Checking ${candidates.length} portal(s)...\n`);
 

@@ -95,35 +95,23 @@ Traditional scrapers use CSS selectors tied to portal markup. That breaks every 
 
 `HtmlPortalAdapter` hands the full HTML (cleaned) to Haiku with a Zod schema describing what an opportunity looks like. Haiku adapts to layout changes automatically. A few thousand tokens per portal per run is vastly cheaper than quarterly scraper maintenance across dozens of sources.
 
-### State portal findings from the audit
+### State portal findings
 
-Ran `pnpm audit:robots` against the Phase 2C candidate set (CA, TX, NY, FL, IL plus alternates OR, WA, GA, VA, PA). Headline findings:
+See [`docs/state-portal-survey.md`](docs/state-portal-survey.md) for the full 50-state + DC matrix: portal URL, detected platform, `robots.txt` verdict, recommended ingestion mechanism, and tier (easy / scrape / hard / commercial-only).
 
-- **Texas ESBD** — `robots.txt` disallows automated access. Not a target.
-- **California Cal eProcure** — client-side SPA; `HtmlPortalAdapter` won't work as-is. Would need Firecrawl or Playwright.
-- **NY State Contract Reporter** — requires registration for content access.
-- **Florida / Illinois** — similar session/auth constraints to NY.
-- **Oregon, Georgia, Virginia** — rescan these first; precedent suggests they're more permissive (Public Bid Tracker scrapes them).
+Source of truth lives in [`src/ingestion/state-portals.ts`](src/ingestion/state-portals.ts). Regenerate the doc after any edits:
 
-The `HtmlPortalAdapter` pattern is ready. Concrete state adapters become a matter of running the audit and writing a Trigger.dev task per permitted state — no new adapter code required.
+```bash
+npm run survey:render
+```
 
-### State portal research notes
+Re-validate the `robots.txt` column across all 51 portals:
 
-Investigated CA, TX, NY, FL, IL for Phase 2B. Findings:
+```bash
+tsx scripts/robots-audit.ts --all-states
+```
 
-- **Texas ESBD** (txsmartbuy.gov): `robots.txt` disallows automated access.
-- **California Cal eProcure** (caleprocure.ca.gov): client-side SPA, requires Playwright + JS execution.
-- **NY State Contract Reporter** (nyscr.ny.gov): requires registration for content access.
-- **Florida Vendor Bid System**: similar registration/session constraints.
-- **Illinois BidBuy**: runs on Periscope S2G (third-party platform).
-
-None of the major state portals publish a documented RSS feed or open API. Respecting robots.txt on portals that disallow scraping is a policy decision we've deferred — the commercial alternatives (Public Bid Tracker, BidNet) scrape these regardless of robots.txt, but that posture has legal and ethical downsides we shouldn't adopt by default.
-
-**Revised Phase 2B strategy** (to validate before building):
-1. Start with states whose `robots.txt` permits crawling (needs per-state audit)
-2. Use state email-alert subscription services (many states offer these) and parse inbound emails
-3. For portals that require Playwright, deploy scrapers on dedicated long-running workers (not Trigger.dev) with polite rate limits
-4. Consider commercial licensing for the 5-10 hardest states rather than scraping them
+The survey is the basis for the state-ingestion roadmap: tier-1 states plug into the existing `RssFeedAdapter`, tier-2 states fit `HtmlPortalAdapter`, tier-3 needs Playwright on a long-running worker (not Vercel), tier-4 points at commercial licensing (GovTribe / GovWin / BidPrime).
 
 ---
 
