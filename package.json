@@ -12,7 +12,8 @@
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
     "seed:sources": "tsx scripts/seed-sources.ts",
-    "audit:robots": "tsx scripts/robots-audit.ts"
+    "audit:robots": "tsx scripts/robots-audit.ts",
+    "survey:render": "tsx scripts/render-state-survey.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.0",
