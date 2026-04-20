@@ -3,7 +3,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/supabase/database.types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy so builds / cron routes that never send email don't need RESEND_API_KEY.
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (_resend) return _resend;
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    throw new Error(
+      "RESEND_API_KEY is required to send alert emails — set it in Vercel env vars.",
+    );
+  }
+  _resend = new Resend(key);
+  return _resend;
+}
 
 const FROM =
   process.env.ALERT_FROM_EMAIL ?? "RFP Aggregator <alerts@example.com>";
@@ -52,7 +64,7 @@ export async function sendDigestEmail(
   });
 
   try {
-    await resend.emails.send({
+    await getResend().emails.send({
       from: FROM,
       to: params.userEmail,
       subject,
