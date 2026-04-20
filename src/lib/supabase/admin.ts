@@ -5,8 +5,8 @@ import type { Database } from "./database.types";
  * Admin client — uses the service role key and BYPASSES RLS.
  *
  * Use ONLY in trusted server contexts:
- *   - Ingestion jobs (Trigger.dev tasks)
- *   - Server-side cron / webhook handlers
+ *   - Ingestion jobs (Vercel Cron routes under /api/cron/*)
+ *   - Server-side webhook handlers
  *   - Seed scripts
  *
  * NEVER import this from a client component, route handler that acts on
