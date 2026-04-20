@@ -42,6 +42,7 @@ export type Database = {
           last_crawled_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["sources"]["Insert"]>;
+        Relationships: [];
       };
       rfps: {
         Row: {
@@ -70,6 +71,7 @@ export type Database = {
           raw_payload?: Json;
         };
         Update: Partial<Database["public"]["Tables"]["rfps"]["Insert"]>;
+        Relationships: [];
       };
       rfp_classifications: {
         Row: {
@@ -91,6 +93,7 @@ export type Database = {
           classified_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["rfp_classifications"]["Insert"]>;
+        Relationships: [];
       };
       rfp_embeddings: {
         Row: {
@@ -103,10 +106,11 @@ export type Database = {
           embedded_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["rfp_embeddings"]["Insert"]>;
+        Relationships: [];
       };
-      profiles: { Row: { id: string; email: string; display_name: string | null; role: "admin" | "member"; created_at: string }; Insert: { id: string; email: string; display_name?: string | null; role?: "admin" | "member" }; Update: Partial<{ email: string; display_name: string | null; role: "admin" | "member" }> };
-      saved_searches: { Row: { id: string; user_id: string; name: string; keyword_query: string | null; semantic_query: string | null; semantic_query_embedding: number[] | null; filters: Json; alert_frequency: "realtime" | "daily" | "weekly" | "never"; last_matched_at: string | null; created_at: string; updated_at: string }; Insert: { user_id: string; name: string; keyword_query?: string | null; semantic_query?: string | null; semantic_query_embedding?: number[] | null; filters?: Json; alert_frequency?: "realtime" | "daily" | "weekly" | "never" }; Update: Partial<Database["public"]["Tables"]["saved_searches"]["Insert"]> };
-      alerts: { Row: { id: string; user_id: string; rfp_id: string; saved_search_id: string; relevance_score: number | null; sent_at: string | null; clicked_at: string | null; created_at: string }; Insert: { user_id: string; rfp_id: string; saved_search_id: string; relevance_score?: number | null }; Update: Partial<{ sent_at: string | null; clicked_at: string | null }> };
+      profiles: { Row: { id: string; email: string; display_name: string | null; role: "admin" | "member"; created_at: string }; Insert: { id: string; email: string; display_name?: string | null; role?: "admin" | "member" }; Update: Partial<{ email: string; display_name: string | null; role: "admin" | "member" }>; Relationships: [] };
+      saved_searches: { Row: { id: string; user_id: string; name: string; keyword_query: string | null; semantic_query: string | null; semantic_query_embedding: number[] | null; filters: Json; alert_frequency: "realtime" | "daily" | "weekly" | "never"; last_matched_at: string | null; created_at: string; updated_at: string }; Insert: { user_id: string; name: string; keyword_query?: string | null; semantic_query?: string | null; semantic_query_embedding?: number[] | null; filters?: Json; alert_frequency?: "realtime" | "daily" | "weekly" | "never" }; Update: Partial<Database["public"]["Tables"]["saved_searches"]["Insert"]>; Relationships: [] };
+      alerts: { Row: { id: string; user_id: string; rfp_id: string; saved_search_id: string; relevance_score: number | null; sent_at: string | null; clicked_at: string | null; created_at: string }; Insert: { user_id: string; rfp_id: string; saved_search_id: string; relevance_score?: number | null }; Update: Partial<{ sent_at: string | null; clicked_at: string | null }>; Relationships: [] };
       awards: {
         Row: {
           id: string;
@@ -140,6 +144,7 @@ export type Database = {
           "id" | "created_at" | "updated_at" | "raw_payload"
         > & { id?: string; raw_payload?: Json };
         Update: Partial<Database["public"]["Tables"]["awards"]["Insert"]>;
+        Relationships: [];
       };
       award_embeddings: {
         Row: {
@@ -152,8 +157,12 @@ export type Database = {
           embedded_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["award_embeddings"]["Insert"]>;
+        Relationships: [];
       };
     };
+    Views: { [_ in never]: never };
+    Enums: { [_ in never]: never };
+    CompositeTypes: { [_ in never]: never };
     Functions: {
       search_rfps: {
         Args: {
