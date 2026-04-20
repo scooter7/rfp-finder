@@ -6,6 +6,14 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 import InviteUserForm from "./invite-form";
 import RoleToggle from "./role-toggle";
 
+type UserRow = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  role: "admin" | "member";
+  created_at: string;
+};
+
 export default async function AdminHome() {
   const session = await getSessionUser();
   if (!session) redirect("/login?next=/admin");
@@ -13,17 +21,19 @@ export default async function AdminHome() {
 
   const supabase = await createServerSupabaseClient();
 
-  const [{ data: users }, { count: searchCount }, { count: alertCount }] =
-    await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, email, display_name, role, created_at")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("saved_searches")
-        .select("*", { count: "exact", head: true }),
-      supabase.from("alerts").select("*", { count: "exact", head: true }),
-    ]);
+  const [usersRes, searchCountRes, alertCountRes] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, email, display_name, role, created_at")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("saved_searches")
+      .select("*", { count: "exact", head: true }),
+    supabase.from("alerts").select("*", { count: "exact", head: true }),
+  ]);
+  const users = (usersRes.data ?? []) as UserRow[];
+  const searchCount = searchCountRes.count ?? 0;
+  const alertCount = alertCountRes.count ?? 0;
 
   return (
     <div className="space-y-8">
@@ -35,9 +45,9 @@ export default async function AdminHome() {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <Stat label="Users" value={users?.length ?? 0} />
-        <Stat label="Saved searches" value={searchCount ?? 0} />
-        <Stat label="Alerts" value={alertCount ?? 0} />
+        <Stat label="Users" value={users.length} />
+        <Stat label="Saved searches" value={searchCount} />
+        <Stat label="Alerts" value={alertCount} />
       </div>
 
       <nav className="flex gap-4 text-sm">
@@ -73,7 +83,7 @@ export default async function AdminHome() {
               </tr>
             </thead>
             <tbody>
-              {(users ?? []).map((u) => (
+              {users.map((u) => (
                 <tr key={u.id} className="border-t border-border">
                   <td className="px-4 py-2">{u.email}</td>
                   <td className="px-4 py-2 text-muted-foreground">

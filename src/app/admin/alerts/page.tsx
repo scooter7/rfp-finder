@@ -3,39 +3,53 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+type AlertRow = {
+  id: string;
+  user_id: string;
+  rfp_id: string;
+  saved_search_id: string;
+  relevance_score: number | null;
+  sent_at: string | null;
+  clicked_at: string | null;
+  created_at: string;
+};
+
 export default async function AdminAlertsPage() {
   const session = await getSessionUser();
   if (!session) redirect("/login?next=/admin/alerts");
   if (session.role !== "admin") redirect("/");
 
   const supabase = await createServerSupabaseClient();
-  const { data: alerts } = await supabase
+  const alertsRes = await supabase
     .from("alerts")
     .select("id, user_id, rfp_id, saved_search_id, relevance_score, sent_at, clicked_at, created_at")
     .order("created_at", { ascending: false })
     .limit(500);
+  const alerts = (alertsRes.data ?? []) as AlertRow[];
 
-  const userIds = Array.from(new Set((alerts ?? []).map((a) => a.user_id)));
-  const rfpIds = Array.from(new Set((alerts ?? []).map((a) => a.rfp_id)));
+  const userIds = Array.from(new Set(alerts.map((a) => a.user_id)));
+  const rfpIds = Array.from(new Set(alerts.map((a) => a.rfp_id)));
 
-  const [{ data: owners }, { data: rfps }] = await Promise.all([
+  const [ownersRes, rfpsRes] = await Promise.all([
     userIds.length
       ? supabase.from("profiles").select("id, email").in("id", userIds)
-      : Promise.resolve({ data: [] as { id: string; email: string }[] }),
+      : Promise.resolve({ data: [] }),
     rfpIds.length
       ? supabase.from("rfps").select("id, title").in("id", rfpIds)
-      : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+      : Promise.resolve({ data: [] }),
   ]);
+  const owners = (ownersRes.data ?? []) as { id: string; email: string }[];
+  const rfps = (rfpsRes.data ?? []) as { id: string; title: string }[];
 
-  const ownerEmail = new Map(owners?.map((o) => [o.id, o.email]) ?? []);
-  const rfpTitle = new Map(rfps?.map((r) => [r.id, r.title]) ?? []);
+  const ownerEmail = new Map(owners.map((o) => [o.id, o.email]));
+  const rfpTitle = new Map(rfps.map((r) => [r.id, r.title]));
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">All alerts</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Most recent 500. {alerts?.length ?? 0} shown.
+          Most recent 500. {alerts.length} shown.
         </p>
       </div>
 
@@ -52,7 +66,7 @@ export default async function AdminAlertsPage() {
             </tr>
           </thead>
           <tbody>
-            {(alerts ?? []).map((a) => (
+            {alerts.map((a) => (
               <tr key={a.id} className="border-t border-border align-top">
                 <td className="px-4 py-2">
                   {ownerEmail.get(a.user_id) ?? a.user_id}

@@ -3,22 +3,36 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+type SavedSearchRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  keyword_query: string | null;
+  semantic_query: string | null;
+  filters: unknown;
+  alert_frequency: string;
+  last_matched_at: string | null;
+  created_at: string;
+};
+
 export default async function AdminSavedSearchesPage() {
   const session = await getSessionUser();
   if (!session) redirect("/login?next=/admin/saved-searches");
   if (session.role !== "admin") redirect("/");
 
   const supabase = await createServerSupabaseClient();
-  const { data: searches } = await supabase
+  const searchesRes = await supabase
     .from("saved_searches")
     .select("id, user_id, name, keyword_query, semantic_query, filters, alert_frequency, last_matched_at, created_at")
     .order("created_at", { ascending: false });
+  const searches = (searchesRes.data ?? []) as SavedSearchRow[];
 
-  const userIds = Array.from(new Set((searches ?? []).map((s) => s.user_id)));
-  const { data: owners } = userIds.length
+  const userIds = Array.from(new Set(searches.map((s) => s.user_id)));
+  const ownersRes = userIds.length
     ? await supabase.from("profiles").select("id, email").in("id", userIds)
     : { data: [] };
-  const ownerEmail = new Map(owners?.map((o) => [o.id, o.email]) ?? []);
+  const owners = (ownersRes.data ?? []) as { id: string; email: string }[];
+  const ownerEmail = new Map(owners.map((o) => [o.id, o.email]));
 
   return (
     <div className="space-y-6">
@@ -27,7 +41,7 @@ export default async function AdminSavedSearchesPage() {
           All saved searches
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Across every user. {searches?.length ?? 0} total.
+          Across every user. {searches.length} total.
         </p>
       </div>
 
@@ -45,7 +59,7 @@ export default async function AdminSavedSearchesPage() {
             </tr>
           </thead>
           <tbody>
-            {(searches ?? []).map((s) => (
+            {searches.map((s) => (
               <tr key={s.id} className="border-t border-border align-top">
                 <td className="px-4 py-2">{ownerEmail.get(s.user_id) ?? s.user_id}</td>
                 <td className="px-4 py-2 font-medium">{s.name}</td>

@@ -13,11 +13,12 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  const profileRes = await supabase
     .from("profiles")
     .select("role, email")
     .eq("id", user.id)
     .maybeSingle();
+  const profile = profileRes.data as { role: "admin" | "member"; email: string } | null;
 
   return {
     id: user.id,
