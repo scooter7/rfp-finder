@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth";
 import { signOut } from "./saved-searches/actions";
 
 export const metadata: Metadata = {
@@ -15,10 +15,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   return (
     <html lang="en">
@@ -38,6 +35,14 @@ export default async function RootLayout({
               >
                 Saved Searches
               </Link>
+              {user?.role === "admin" ? (
+                <Link
+                  href="/admin"
+                  className="hover:text-foreground transition"
+                >
+                  Admin
+                </Link>
+              ) : null}
               {user ? (
                 <form action={signOut} className="flex items-center gap-3">
                   <span className="text-xs">{user.email}</span>

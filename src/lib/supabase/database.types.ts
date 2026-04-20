@@ -103,7 +103,7 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["rfp_embeddings"]["Insert"]>;
       };
-      profiles: { Row: { id: string; email: string; display_name: string | null; created_at: string }; Insert: { id: string; email: string; display_name?: string | null }; Update: Partial<{ email: string; display_name: string | null }> };
+      profiles: { Row: { id: string; email: string; display_name: string | null; role: "admin" | "member"; created_at: string }; Insert: { id: string; email: string; display_name?: string | null; role?: "admin" | "member" }; Update: Partial<{ email: string; display_name: string | null; role: "admin" | "member" }> };
       saved_searches: { Row: { id: string; user_id: string; name: string; keyword_query: string | null; semantic_query: string | null; semantic_query_embedding: number[] | null; filters: Json; alert_frequency: "realtime" | "daily" | "weekly" | "never"; last_matched_at: string | null; created_at: string; updated_at: string }; Insert: { user_id: string; name: string; keyword_query?: string | null; semantic_query?: string | null; semantic_query_embedding?: number[] | null; filters?: Json; alert_frequency?: "realtime" | "daily" | "weekly" | "never" }; Update: Partial<Database["public"]["Tables"]["saved_searches"]["Insert"]> };
       alerts: { Row: { id: string; user_id: string; rfp_id: string; saved_search_id: string; relevance_score: number | null; sent_at: string | null; clicked_at: string | null; created_at: string }; Insert: { user_id: string; rfp_id: string; saved_search_id: string; relevance_score?: number | null }; Update: Partial<{ sent_at: string | null; clicked_at: string | null }> };
       awards: {
