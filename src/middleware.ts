@@ -18,7 +18,7 @@ import type { Database } from "@/lib/supabase/database.types";
  *   - /api/*                 (search + webhooks — enforce auth per-route)
  */
 
-const PROTECTED_PREFIXES = ["/saved-searches"];
+const PROTECTED_PREFIXES = ["/saved-searches", "/admin"];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });

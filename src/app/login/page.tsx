@@ -25,12 +25,16 @@ export default function LoginPage() {
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: redirectTo },
+      options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
     });
 
     if (error) {
       setStatus("error");
-      setMessage(error.message);
+      setMessage(
+        /signup.*disabled|not.*allowed|not.*found/i.test(error.message)
+          ? "No account found for that email. Ask an admin to invite you."
+          : error.message,
+      );
       return;
     }
 
