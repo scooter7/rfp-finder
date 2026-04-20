@@ -6,9 +6,17 @@ type SearchParams = {
   q?: string;
   vertical?: string;
   category?: string;
-  state?: string;
+  state?: string | string[];
   semantic?: string;
 };
+
+function toStateArray(raw: string | string[] | undefined): string[] {
+  if (!raw) return [];
+  const arr = Array.isArray(raw) ? raw : raw.split(",");
+  return arr
+    .map((s) => s.trim().toUpperCase())
+    .filter((s) => /^[A-Z]{2}$/.test(s));
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -17,15 +25,13 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const supabase = await createServerSupabaseClient();
+  const states = toStateArray(params.state);
 
-  // For semantic search we'd need to embed the query server-side.
-  // Phase 1: keyword + filter only. The /api/search route handles semantic
-  // when called from the client (so embedding happens out-of-band).
   const { data: rfps, error } = await supabase.rpc("search_rfps", {
     p_keyword: params.q || null,
     p_vertical: params.vertical || null,
     p_category: params.category || null,
-    p_state: params.state || null,
+    p_states: states.length ? states : null,
     p_limit: 50,
     p_offset: 0,
   });
@@ -39,7 +45,14 @@ export default async function DashboardPage({
         </p>
       </div>
 
-      <RfpFilters current={params} />
+      <RfpFilters
+        current={{
+          q: params.q,
+          vertical: params.vertical,
+          category: params.category,
+          states,
+        }}
+      />
 
       {error ? (
         <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-4 text-sm">

@@ -36,16 +36,22 @@ export async function findMatchesForSearch(
   const filters = (search.filters ?? {}) as {
     vertical?: string;
     category?: string;
-    state?: string;
+    state?: string | string[];
     minValueCents?: number;
   };
+
+  const states = Array.isArray(filters.state)
+    ? filters.state
+    : filters.state
+      ? [filters.state]
+      : null;
 
   const { data, error } = await supabase.rpc("search_rfps", {
     p_keyword: search.keyword_query ?? null,
     p_query_embedding: (search.semantic_query_embedding as unknown as number[]) ?? null,
     p_vertical: filters.vertical ?? null,
     p_category: filters.category ?? null,
-    p_state: filters.state ?? null,
+    p_states: states,
     p_posted_after: postedAfter,
     p_min_value_cents: filters.minValueCents ?? null,
     p_similarity_threshold: search.semantic_query_embedding ? 0.7 : 0,
