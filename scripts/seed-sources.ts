@@ -18,12 +18,28 @@ const SEED_SOURCES = [
       notes: "Federal contract opportunities. Rate-limited to 1000 req/hr on public tier.",
     },
   },
-  // ----- Phase 2 placeholders (uncomment as adapters are built) -----
+  {
+    adapter_key: "grants_gov",
+    name: "Grants.gov Federal Grant Opportunities",
+    type: "federal",
+    state: null,
+    url: "https://www.grants.gov/search-grants",
+    metadata: {
+      api: "https://api.grants.gov/v1/api/search2",
+      notes: "Federal financial assistance. No auth. ~1000 posted + ~700 forecasted at any time. Big signal for higher-ed (NIH/NSF/DOE/ED), healthcare (HHS/CDC), K-12 (ED).",
+    },
+  },
+  // ----- Phase 2B (state portals) -----
+  // Every major state portal (CA, TX, NY, FL, IL) either disallows scraping
+  // via robots.txt or runs as a client-side SPA requiring Playwright.
+  // We'll need per-portal ToS review + a more careful scraping strategy
+  // (polite rate limits, caching, possibly commercial licensing for some states).
+  //
   // { adapter_key: "ca_state", name: "California Cal eProcure", type: "state",
   //   state: "CA", url: "https://caleprocure.ca.gov/", metadata: {} },
-  // { adapter_key: "tx_state", name: "Texas SmartBuy", type: "state",
+  // { adapter_key: "tx_state", name: "Texas SmartBuy ESBD", type: "state",
   //   state: "TX", url: "https://www.txsmartbuy.gov/esbd", metadata: {} },
-  // { adapter_key: "ny_state", name: "New York State Contract Reporter", type: "state",
+  // { adapter_key: "ny_state", name: "NY State Contract Reporter", type: "state",
   //   state: "NY", url: "https://www.nyscr.ny.gov/", metadata: {} },
 ];
 

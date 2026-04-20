@@ -10,7 +10,8 @@ A multi-source RFP intelligence platform covering higher-ed, healthcare, K-12, a
 
 ## What works today
 
-- **Federal ingestion** via SAM.gov Opportunities API — automatic every 4 hours
+- **Federal contracts** via SAM.gov Opportunities API — every 4 hours
+- **Federal grants** via Grants.gov search2 API — every 6 hours (covers NIH/NSF/DOE/ED/HHS to universities, hospitals, districts)
 - **LLM classification** of every RFP (vertical, category, tags, confidence) via Claude Haiku 4.5
 - **Semantic search** — pgvector HNSW index over 1536-dim OpenAI embeddings
 - **Keyword + filter search** with hybrid ranking via the `search_rfps` RPC
@@ -23,9 +24,28 @@ A multi-source RFP intelligence platform covering higher-ed, healthcare, K-12, a
 | Phase | Scope | Estimate |
 |-------|-------|----------|
 | 1.5 | Saved searches + Resend email alerts | 3-5 days |
-| 2 | State portal adapters — CA, TX, NY, FL, IL | 2-3 weeks |
-| 3 | Remaining 45 states + institution-level (top R1 universities, major health systems) | 4-6 weeks |
+| 2A | ✓ Grants.gov adapter (done) | — |
+| 2B | State portals — requires per-portal ToS + scraping-strategy review (see below) | TBD |
+| 3 | Institution-level ingestion — top R1 universities, major health systems | 4-6 weeks |
 | 4 | Multi-tenant SaaS (Stripe billing, tiered plans, team workspaces) | 3-4 weeks |
+
+### State portal research notes
+
+Investigated CA, TX, NY, FL, IL for Phase 2B. Findings:
+
+- **Texas ESBD** (txsmartbuy.gov): `robots.txt` disallows automated access.
+- **California Cal eProcure** (caleprocure.ca.gov): client-side SPA, requires Playwright + JS execution.
+- **NY State Contract Reporter** (nyscr.ny.gov): requires registration for content access.
+- **Florida Vendor Bid System**: similar registration/session constraints.
+- **Illinois BidBuy**: runs on Periscope S2G (third-party platform).
+
+None of the major state portals publish a documented RSS feed or open API. Respecting robots.txt on portals that disallow scraping is a policy decision we've deferred — the commercial alternatives (Public Bid Tracker, BidNet) scrape these regardless of robots.txt, but that posture has legal and ethical downsides we shouldn't adopt by default.
+
+**Revised Phase 2B strategy** (to validate before building):
+1. Start with states whose `robots.txt` permits crawling (needs per-state audit)
+2. Use state email-alert subscription services (many states offer these) and parse inbound emails
+3. For portals that require Playwright, deploy scrapers on dedicated long-running workers (not Trigger.dev) with polite rate limits
+4. Consider commercial licensing for the 5-10 hardest states rather than scraping them
 
 ---
 
