@@ -20,25 +20,29 @@ type Rfp = {
   similarity: number | null;
 };
 
+type RfpJoinRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  agency_name: string | null;
+  state: string | null;
+  url: string;
+  posted_at: string | null;
+  due_at: string | null;
+  estimated_value_cents: number | null;
+};
+
+type ClassificationRow = {
+  rfp_id: string;
+  vertical: string | null;
+  category: string | null;
+  tags: string[] | null;
+};
+
 type SavedRow = {
   rfp_id: string;
   created_at: string;
-  rfps: {
-    id: string;
-    title: string;
-    description: string | null;
-    agency_name: string | null;
-    state: string | null;
-    url: string;
-    posted_at: string | null;
-    due_at: string | null;
-    estimated_value_cents: number | null;
-  };
-  rfp_classifications: {
-    vertical: string | null;
-    category: string | null;
-    tags: string[] | null;
-  } | null;
+  rfps: RfpJoinRow | null;
 };
 
 export default async function SavedRfpsPage() {
@@ -46,32 +50,54 @@ export default async function SavedRfpsPage() {
   if (!session) redirect("/login?next=/saved-rfps");
 
   const supabase = await createServerSupabaseClient();
-  const res = await supabase
+
+  // 1. Pull the user's saved rows joined to the base rfps record.
+  const savedRes = await supabase
     .from("saved_rfps")
     .select(
-      "rfp_id, created_at, rfps!inner(id,title,description,agency_name,state,url,posted_at,due_at,estimated_value_cents), rfp_classifications(vertical,category,tags)",
+      "rfp_id, created_at, rfps!inner(id,title,description,agency_name,state,url,posted_at,due_at,estimated_value_cents)",
     )
     .eq("user_id", session.id)
     .order("created_at", { ascending: false });
-
-  const rows = (res.data ?? []) as unknown as SavedRow[];
+  const rows = (savedRes.data ?? []) as unknown as SavedRow[];
   const savedRfpIds = new Set(rows.map((r) => r.rfp_id));
 
-  const rfps: Rfp[] = rows.map((r) => ({
-    rfp_id: r.rfps.id,
-    title: r.rfps.title,
-    description: r.rfps.description,
-    agency_name: r.rfps.agency_name,
-    state: r.rfps.state,
-    url: r.rfps.url,
-    posted_at: r.rfps.posted_at,
-    due_at: r.rfps.due_at,
-    estimated_value_cents: r.rfps.estimated_value_cents,
-    vertical: r.rfp_classifications?.vertical ?? null,
-    category: r.rfp_classifications?.category ?? null,
-    tags: r.rfp_classifications?.tags ?? null,
-    similarity: null,
-  }));
+  // 2. Fetch classifications separately (they live on a different table and
+  //    supabase-js's nested-select chain can't reach them through saved_rfps).
+  const classMap = new Map<string, ClassificationRow>();
+  if (rows.length > 0) {
+    const classRes = await supabase
+      .from("rfp_classifications")
+      .select("rfp_id, vertical, category, tags")
+      .in(
+        "rfp_id",
+        rows.map((r) => r.rfp_id),
+      );
+    for (const c of (classRes.data ?? []) as ClassificationRow[]) {
+      classMap.set(c.rfp_id, c);
+    }
+  }
+
+  const rfps: Rfp[] = rows
+    .filter((r): r is SavedRow & { rfps: RfpJoinRow } => r.rfps !== null)
+    .map((r) => {
+      const c = classMap.get(r.rfp_id);
+      return {
+        rfp_id: r.rfps.id,
+        title: r.rfps.title,
+        description: r.rfps.description,
+        agency_name: r.rfps.agency_name,
+        state: r.rfps.state,
+        url: r.rfps.url,
+        posted_at: r.rfps.posted_at,
+        due_at: r.rfps.due_at,
+        estimated_value_cents: r.rfps.estimated_value_cents,
+        vertical: c?.vertical ?? null,
+        category: c?.category ?? null,
+        tags: c?.tags ?? null,
+        similarity: null,
+      };
+    });
 
   return (
     <div className="space-y-6">
