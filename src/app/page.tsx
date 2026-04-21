@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { RfpFilters } from "@/components/rfp-filters";
 import { RfpList } from "@/components/rfp-list";
+import { getSessionUser } from "@/lib/auth";
 
 type SearchParams = {
   q?: string;
@@ -25,6 +26,7 @@ export default async function DashboardPage({
 }) {
   const params = await searchParams;
   const supabase = await createServerSupabaseClient();
+  const session = await getSessionUser();
   const states = toStateArray(params.state);
 
   const { data: rfps, error } = await supabase.rpc("search_rfps", {
@@ -35,6 +37,20 @@ export default async function DashboardPage({
     p_limit: 50,
     p_offset: 0,
   });
+
+  // Fetch the user's saved RFPs (only IDs visible on this page) so we can
+  // render each card's save button with the correct initial state.
+  let savedRfpIds = new Set<string>();
+  if (session && rfps && rfps.length > 0) {
+    const resIds = (rfps as Array<{ rfp_id: string }>).map((r) => r.rfp_id);
+    const savedRes = await supabase
+      .from("saved_rfps")
+      .select("rfp_id")
+      .eq("user_id", session.id)
+      .in("rfp_id", resIds);
+    const saved = (savedRes.data ?? []) as Array<{ rfp_id: string }>;
+    savedRfpIds = new Set(saved.map((r) => r.rfp_id));
+  }
 
   return (
     <div className="space-y-6">
@@ -59,7 +75,11 @@ export default async function DashboardPage({
           Search failed: {error.message}
         </div>
       ) : (
-        <RfpList rfps={rfps ?? []} />
+        <RfpList
+          rfps={rfps ?? []}
+          savedRfpIds={savedRfpIds}
+          signedIn={!!session}
+        />
       )}
     </div>
   );

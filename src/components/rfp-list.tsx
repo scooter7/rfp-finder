@@ -1,3 +1,5 @@
+import { SaveRfpButton } from "@/components/save-rfp-button";
+
 type Rfp = {
   rfp_id: string;
   title: string;
@@ -14,7 +16,15 @@ type Rfp = {
   similarity: number | null;
 };
 
-export function RfpList({ rfps }: { rfps: Rfp[] }) {
+export function RfpList({
+  rfps,
+  savedRfpIds,
+  signedIn,
+}: {
+  rfps: Rfp[];
+  savedRfpIds?: Set<string>;
+  signedIn?: boolean;
+}) {
   if (rfps.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border p-12 text-center text-muted-foreground">
@@ -33,7 +43,11 @@ export function RfpList({ rfps }: { rfps: Rfp[] }) {
           key={rfp.rfp_id}
           className="rounded-lg border border-border bg-card p-4 hover:border-foreground/20 transition"
         >
-          <a href={`/rfps/${rfp.rfp_id}`} className="block space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <a
+              href={`/rfps/${rfp.rfp_id}`}
+              className="block flex-1 min-w-0 space-y-2"
+            >
             <div className="flex items-start justify-between gap-4">
               <h2 className="font-medium leading-snug line-clamp-2">
                 {rfp.title}
@@ -71,7 +85,13 @@ export function RfpList({ rfps }: { rfps: Rfp[] }) {
                 ))}
               </div>
             ) : null}
-          </a>
+            </a>
+            <SaveRfpButton
+              rfpId={rfp.rfp_id}
+              initialSaved={savedRfpIds?.has(rfp.rfp_id) ?? false}
+              signedIn={signedIn ?? false}
+            />
+          </div>
         </li>
       ))}
     </ul>
