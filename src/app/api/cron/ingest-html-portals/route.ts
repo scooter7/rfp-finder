@@ -22,6 +22,7 @@ interface HtmlPortalMetadata {
   default_agency?: string;
   extraction_hints?: string;
   max_pages?: number;
+  requires_js?: boolean;
 }
 
 /**
@@ -91,6 +92,7 @@ export async function GET(request: Request) {
       listingUrl: portalMeta.listing_url,
       extractionHints: portalMeta.extraction_hints,
       maxPages: portalMeta.max_pages,
+      requiresJs: portalMeta.requires_js,
     };
 
     const portalDeadline = Math.min(Date.now() + perPortalBudget, deadlineMs);

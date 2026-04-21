@@ -94,6 +94,12 @@ export interface HtmlPortalConfig {
   extractionHints?: string;
   /** Maximum listing pages to follow (protects against pagination loops) */
   maxPages?: number;
+  /**
+   * Route the request through Jina Reader (https://r.jina.ai) so JS-rendered
+   * SPAs serve their post-hydration content. Free tier; rate-limited but fine
+   * at 6h cron cadence.
+   */
+  requiresJs?: boolean;
 }
 
 export class HtmlPortalAdapter implements IngestionAdapter {
@@ -153,25 +159,35 @@ export class HtmlPortalAdapter implements IngestionAdapter {
   private async extractFromUrl(
     url: string,
   ): Promise<z.infer<typeof extractionSchema>> {
-    const html = await pRetry(
+    // JS-rendered portals: proxy through Jina Reader to get the hydrated
+    // page as Markdown. Direct fetch otherwise.
+    const fetchUrl = this.config.requiresJs
+      ? `https://r.jina.ai/${url}`
+      : url;
+    const acceptHeader = this.config.requiresJs ? "text/plain" : "text/html";
+
+    const body = await pRetry(
       async () => {
-        const res = await fetch(url, {
+        const res = await fetch(fetchUrl, {
           headers: {
-            accept: "text/html",
+            accept: acceptHeader,
             "user-agent": "rfp-aggregator/0.1 (respecting robots.txt)",
           },
-          signal: AbortSignal.timeout(20_000),
+          signal: AbortSignal.timeout(45_000), // Jina is slower than direct
         });
         if (!res.ok) {
-          throw new Error(`${this.config.key} ${res.status} at ${url}`);
+          throw new Error(`${this.config.key} ${res.status} at ${fetchUrl}`);
         }
         return res.text();
       },
       { retries: 2, minTimeout: 1000, factor: 2 },
     );
 
-    // Strip down the HTML to reduce tokens. Keep the body text and hrefs.
-    const cleaned = simplifyHtml(html).slice(0, 80_000);
+    // For Jina Reader output we already have Markdown — no HTML to strip.
+    // For direct fetch, strip scripts/styles to reduce tokens.
+    const cleaned = this.config.requiresJs
+      ? body.slice(0, 80_000)
+      : simplifyHtml(body).slice(0, 80_000);
 
     const system = `You extract RFP/bid opportunities from public procurement portal HTML.
 
