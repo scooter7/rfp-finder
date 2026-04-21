@@ -43,40 +43,203 @@ const SEED_SOURCES: SourceInsert[] = [
       notes: "Historical federal awards (contracts + grants). No auth. Powers the 'similar past awards' competitor-intel view on RFP detail pages.",
     },
   },
-  // ----- Phase 3: Institution-level HTML portals -----
-  //
-  // To add an institution:
-  //   1. Run `pnpm audit:robots https://portal.url/` to confirm scraping is permitted
-  //   2. Add a seed entry below with type="institution" and 2-char state
-  //   3. Add a Trigger.dev task at trigger/tasks/ingest-{adapter_key}.ts that
-  //      instantiates HtmlPortalAdapter with the portal's config
-  //   4. Deploy and observe the first run — HTML portals often need
-  //      extraction-hint tuning after seeing real output
-  //
-  // Example (uncomment once robots.txt is confirmed):
-  // {
-  //   adapter_key: "university_of_oregon",
-  //   name: "University of Oregon Procurement",
-  //   type: "institution",
-  //   state: "OR",
-  //   url: "https://uoregon.bonfirehub.com/portal/",
-  //   metadata: {
-  //     platform: "Bonfire",
-  //     notes: "Public bid listing. Bonfire-hosted, consistent structure across tenants.",
-  //   },
-  // },
-  // ----- Phase 2B (state portals) -----
-  // Every major state portal (CA, TX, NY, FL, IL) either disallows scraping
-  // via robots.txt or runs as a client-side SPA requiring Playwright.
-  // We'll need per-portal ToS review + a more careful scraping strategy
-  // (polite rate limits, caching, possibly commercial licensing for some states).
-  //
-  // { adapter_key: "ca_state", name: "California Cal eProcure", type: "state",
-  //   state: "CA", url: "https://caleprocure.ca.gov/", metadata: {} },
-  // { adapter_key: "tx_state", name: "Texas SmartBuy ESBD", type: "state",
-  //   state: "TX", url: "https://www.txsmartbuy.gov/esbd", metadata: {} },
-  // { adapter_key: "ny_state", name: "NY State Contract Reporter", type: "state",
-  //   state: "NY", url: "https://www.nyscr.ny.gov/", metadata: {} },
+  // ----- State portals: tier-2 HTML-scrape (HtmlPortalAdapter) -----
+  // These have server-rendered listing pages that don't need JS. The
+  // ingest-html-portals cron picks them up via metadata.html_portal.
+  {
+    adapter_key: "me_dafs_bbm",
+    name: "Maine Division of Purchases",
+    type: "state",
+    state: "ME",
+    url: "https://www.maine.gov/dafs/bbm/procurementservices/vendors/rfps",
+    metadata: {
+      html_portal: {
+        listing_url: "https://www.maine.gov/dafs/bbm/procurementservices/vendors/rfps",
+        default_agency: "Maine BBM Division of Purchases",
+        extraction_hints:
+          "Single HTML table. Each row = one RFP. Columns: Title, RFP # (externalId), Issuing Department, Date Posted, Q&A, Amendment. Detail URL is in the Title cell.",
+      },
+    },
+  },
+  {
+    adapter_key: "in_idoa",
+    name: "Indiana IDOA Current Business Opportunities",
+    type: "state",
+    state: "IN",
+    url: "https://www.in.gov/idoa/procurement/current-business-opportunities/",
+    metadata: {
+      html_portal: {
+        listing_url: "https://www.in.gov/idoa/procurement/current-business-opportunities/",
+        default_agency: "Indiana Department of Administration",
+        extraction_hints:
+          "Current business opportunities table. Columns: Solicitation Number, Title, Agency, Issue Date, Close Date. Only current (not archive).",
+        max_pages: 1,
+      },
+    },
+  },
+  {
+    adapter_key: "la_lapac",
+    name: "Louisiana LaPAC",
+    type: "state",
+    state: "LA",
+    url: "https://wwwcfprd.doa.louisiana.gov/OSP/LaPAC/pubmain.cfm",
+    metadata: {
+      html_portal: {
+        listing_url: "https://wwwcfprd.doa.louisiana.gov/osp/lapac/deptbids.cfm",
+        default_agency: "Louisiana Office of State Procurement",
+        extraction_hints:
+          "Bids grouped by department. Capture title, proposal number, open/close dates.",
+      },
+    },
+  },
+  {
+    adapter_key: "ne_materiel",
+    name: "Nebraska DAS Materiel Purchasing",
+    type: "state",
+    state: "NE",
+    url: "https://das.nebraska.gov/materiel/purchasing.html",
+    metadata: {
+      html_portal: {
+        listing_url: "https://das.nebraska.gov/materiel/purchasing.html",
+        default_agency: "Nebraska DAS Materiel Division",
+        extraction_hints:
+          "Open solicitations listed in tables. Columns: Solicitation number (externalId), Title, Issue Date, Close Date.",
+      },
+    },
+  },
+  {
+    adapter_key: "ak_opn",
+    name: "Alaska Online Public Notices (Procurement)",
+    type: "state",
+    state: "AK",
+    url: "https://aws.state.ak.us/OnlinePublicNotices/",
+    metadata: {
+      html_portal: {
+        listing_url: "https://aws.state.ak.us/OnlinePublicNotices/Notices/Search.aspx?st=1",
+        default_agency: "State of Alaska",
+        extraction_hints:
+          "Public notices filtered to Solicitations. Columns: Subject (title), Department, Publication Date, Close Date, Notice Number (externalId). Only procurement-related.",
+      },
+    },
+  },
+  {
+    adapter_key: "sd_boa",
+    name: "South Dakota BOA Current Solicitations",
+    type: "state",
+    state: "SD",
+    url: "https://boa.sd.gov/vendor-info/current-solicitations/",
+    status: "paused",
+    metadata: {
+      html_portal: {
+        listing_url: "https://boa.sd.gov/vendor-info/current-solicitations/",
+        default_agency: "South Dakota Bureau of Administration",
+        paused_reason: "962KB HTML blows 80KB simplifier budget; need narrower listing URL",
+      },
+    },
+  },
+
+  // ----- State portals: tier-3 SPA via Jina Reader (requires_js: true) -----
+  // The Jina Reader free endpoint renders the page and returns Markdown; our
+  // HtmlPortalAdapter detects requires_js and proxies through r.jina.ai.
+  {
+    adapter_key: "mo_missouribuys",
+    name: "Missouri MissouriBUYS MOVERS",
+    type: "state",
+    state: "MO",
+    url: "https://missouribuys.mo.gov/bid-board/movers",
+    metadata: {
+      html_portal: {
+        listing_url:
+          "https://ewqg.fa.us8.oraclecloud.com/fscmUI/redwood/negotiation-abstracts/view/abstractlisting?prcBuId=300000005255687&ojSpLang=en",
+        default_agency: "State of Missouri",
+        requires_js: true,
+        extraction_hints:
+          "Oracle MOVERS solicitation abstracts page. Each bullet is one opportunity with type (RFP/SFS/RFI/IFB/RFQ), solicitation number (externalId), and title. Extract only Active ones; skip Closed.",
+      },
+    },
+  },
+  {
+    adapter_key: "nj_njstart",
+    name: "NJSTART",
+    type: "state",
+    state: "NJ",
+    url: "https://www.njstart.gov/",
+    metadata: {
+      html_portal: {
+        listing_url: "https://www.njstart.gov/bso/external/publicBids.sdo",
+        default_agency: "State of New Jersey",
+        requires_js: true,
+        extraction_hints:
+          "NJSTART (Periscope) public bids. Extract current solicitations with title, bid number, open/close dates.",
+      },
+    },
+  },
+  {
+    adapter_key: "or_oregonbuys",
+    name: "OregonBuys",
+    type: "state",
+    state: "OR",
+    url: "https://oregonbuys.gov/",
+    metadata: {
+      html_portal: {
+        listing_url: "https://oregonbuys.gov/bso/external/publicBids.sdo",
+        default_agency: "State of Oregon",
+        requires_js: true,
+        extraction_hints:
+          "OregonBuys (Periscope S2G) public bids. Each row is a solicitation.",
+      },
+    },
+  },
+  {
+    adapter_key: "va_eva",
+    name: "Virginia eVA",
+    type: "state",
+    state: "VA",
+    url: "https://eva.virginia.gov/",
+    metadata: {
+      html_portal: {
+        listing_url: "https://eva.virginia.gov/pr/public",
+        default_agency: "Commonwealth of Virginia",
+        requires_js: true,
+        extraction_hints:
+          "eVA public opportunities. Each row represents a solicitation; capture title, reference number, agency, open/close dates.",
+      },
+    },
+  },
+
+  // ----- State portals: RSS-based (paused — feeds proved abandoned) -----
+  // Kept as declared sources so the repo remembers they were tried and why.
+  {
+    adapter_key: "dc_ocp",
+    name: "DC Office of Contracting & Procurement",
+    type: "state",
+    state: "DC",
+    url: "https://ocp.dc.gov/",
+    status: "paused",
+    metadata: {
+      rss_url: "https://ocp.dc.gov/rss.xml",
+      default_agency: "DC Office of Contracting & Procurement",
+      paused_reason: "RSS feed abandoned — DC last updated 2024-09; re-check 2026-Q3",
+    },
+  },
+  {
+    adapter_key: "nm_state_purchasing",
+    name: "New Mexico State Purchasing",
+    type: "state",
+    state: "NM",
+    url: "https://www.generalservices.state.nm.us/state-purchasing/",
+    status: "paused",
+    metadata: {
+      rss_url: "https://generalservices.state.nm.us/feed/",
+      default_agency: "New Mexico General Services Department",
+      paused_reason: "WordPress feed has 0 items; not a procurement feed",
+    },
+  },
+
+  // ----- Institution-level HTML portals (Phase 3, not yet wired) -----
+  // When adding one: run `tsx scripts/robots-audit.ts <URL>` first, then add
+  // an entry here with type="institution" and 2-char state. The existing
+  // ingest-html-portals cron picks it up automatically.
 ];
 
 async function main() {
