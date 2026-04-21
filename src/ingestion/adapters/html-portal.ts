@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { anthropic } from "@ai-sdk/anthropic";
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import pRetry from "p-retry";
 
 import type {
@@ -39,12 +39,12 @@ const extractedOpportunitySchema = z.object({
   title: z
     .string()
     .min(3)
-    .max(500)
     .describe("The title of the RFP/solicitation"),
   detailUrl: z
     .string()
+    .optional()
     .describe(
-      "The href to the detail page for this opportunity. May be relative (will be resolved).",
+      "The href to the detail page for this opportunity (may be relative — will be resolved). Omit if the listing row has no detail link.",
     ),
   externalId: z
     .string()
@@ -131,7 +131,9 @@ export class HtmlPortalAdapter implements IngestionAdapter {
           externalId: op.externalId || op.detailUrl || op.title,
           title: op.title,
           description: op.briefDescription ?? null,
-          url: resolveUrl(this.config.listingUrl, op.detailUrl),
+          url: op.detailUrl
+            ? resolveUrl(this.config.listingUrl, op.detailUrl)
+            : this.config.listingUrl,
           agencyName: this.config.defaultAgencyName,
           state: this.config.state ?? null,
           postedAt,
@@ -171,20 +173,85 @@ export class HtmlPortalAdapter implements IngestionAdapter {
     // Strip down the HTML to reduce tokens. Keep the body text and hrefs.
     const cleaned = simplifyHtml(html).slice(0, 80_000);
 
-    const { object } = await generateObject({
-      model: anthropic(EXTRACTION_MODEL),
-      schema: extractionSchema,
-      system: `You extract RFP/bid opportunities from public procurement portal HTML.
+    const system = `You extract RFP/bid opportunities from public procurement portal HTML.
 
 Return every real opportunity visible on the page. Ignore navigation, headers, footers, and non-opportunity links. If no opportunities are visible, return an empty array.
 
-${this.config.extractionHints ? `Portal-specific notes:\n${this.config.extractionHints}` : ""}`,
-      prompt: `URL: ${url}\n\nHTML:\n${cleaned}`,
+${this.config.extractionHints ? `Portal-specific notes:\n${this.config.extractionHints}` : ""}`;
+    const prompt = `URL: ${url}\n\nHTML:\n${cleaned}`;
+
+    try {
+      const { object } = await generateObject({
+        model: anthropic(EXTRACTION_MODEL),
+        schema: extractionSchema,
+        system,
+        prompt,
+        temperature: 0,
+        maxTokens: 4000,
+      });
+      return object;
+    } catch (err) {
+      // Fall back to free-form JSON when the strict schema rejects the
+      // LLM output (common on portals where some rows lack one field or
+      // another). We re-validate with a partial schema.
+      console.warn(
+        `[html-portal/${this.config.key}] strict extraction failed, retrying with lenient parse:`,
+        err instanceof Error ? err.message : err,
+      );
+      return await this.extractLenient(url, cleaned, system);
+    }
+  }
+
+  private async extractLenient(
+    _url: string,
+    cleaned: string,
+    system: string,
+  ): Promise<z.infer<typeof extractionSchema>> {
+    const { text } = await generateText({
+      model: anthropic(EXTRACTION_MODEL),
+      system:
+        system +
+        "\n\nReturn ONLY valid JSON with shape: {\"opportunities\":[{\"title\":\"\",\"detailUrl\":\"\",\"externalId\":\"\",\"postedAt\":\"\",\"dueAt\":\"\",\"briefDescription\":\"\"}],\"nextPageUrl\":\"\"}. Omit fields that aren't visible. No prose.",
+      prompt: cleaned,
       temperature: 0,
       maxTokens: 4000,
     });
 
-    return object;
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { opportunities: [] };
+
+    try {
+      const raw = JSON.parse(jsonMatch[0]) as {
+        opportunities?: Array<Record<string, unknown>>;
+        nextPageUrl?: string;
+      };
+      const opportunities = (raw.opportunities ?? [])
+        .map((op): z.infer<typeof extractedOpportunitySchema> | null => {
+          const title = typeof op.title === "string" ? op.title.trim() : "";
+          if (title.length < 3) return null;
+          return {
+            title,
+            detailUrl:
+              typeof op.detailUrl === "string" && op.detailUrl ? op.detailUrl : undefined,
+            externalId:
+              typeof op.externalId === "string" && op.externalId ? op.externalId : undefined,
+            postedAt:
+              typeof op.postedAt === "string" && op.postedAt ? op.postedAt : undefined,
+            dueAt: typeof op.dueAt === "string" && op.dueAt ? op.dueAt : undefined,
+            briefDescription:
+              typeof op.briefDescription === "string" && op.briefDescription
+                ? op.briefDescription
+                : undefined,
+          };
+        })
+        .filter((op): op is z.infer<typeof extractedOpportunitySchema> => op !== null);
+      return {
+        opportunities,
+        nextPageUrl: typeof raw.nextPageUrl === "string" ? raw.nextPageUrl : undefined,
+      };
+    } catch {
+      return { opportunities: [] };
+    }
   }
 }
 
