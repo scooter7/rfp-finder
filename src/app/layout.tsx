@@ -30,6 +30,12 @@ export default async function RootLayout({
                 Browse
               </Link>
               <Link
+                href="/saved-rfps"
+                className="hover:text-foreground transition"
+              >
+                Saved RFPs
+              </Link>
+              <Link
                 href="/saved-searches"
                 className="hover:text-foreground transition"
               >
